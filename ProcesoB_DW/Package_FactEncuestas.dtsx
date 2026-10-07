@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+<DTS:Executable xmlns:DTS="www.microsoft.com/SqlServer/Dts"
+  DTS:refId="Package"
+  DTS:CreationDate="2026-10-07T00:00:00"
+  DTS:CreationName="Microsoft.Package"
+  DTS:CreatorComputerName="ANDRES"
+  DTS:CreatorName="ANDRES\\corre"
+  DTS:DTSID="{D1E1B5F2-0000-4A00-9000-000000000001}"
+  DTS:ExecutableType="Microsoft.Package"
+  DTS:LastModifiedProductVersion="17.0.1016.0"
+  DTS:LocaleID="9226"
+  DTS:ObjectName="Package_FactEncuestas"
+  DTS:PackageType="5"
+  DTS:VersionBuild="1"
+  DTS:VersionGUID="{D1E1B5F2-0000-4A00-9000-000000000002}">
+  <DTS:Property DTS:Name="PackageFormatVersion">8</DTS:Property>
+  <DTS:ConnectionManagers>
+    <DTS:ConnectionManager DTS:refId="Package.ConnectionManagers[ETLActivity.bak]" DTS:CreationName="OLEDB" DTS:DTSID="{C1111111-1111-1111-1111-111111111111}" DTS:ObjectName="ETLActivity.bak">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager DataSource="ANDRES" InitialCatalog="ETLActivity.bak" Provider="MSOLEDBSQL.1" IntegratedSecurity="True">
+          <DTS:ConnectionString>Data Source=ANDRES;Initial Catalog=ETLActivity.bak;Provider=MSOLEDBSQL.1;Integrated Security=SSPI;Auto Translate=False;</DTS:ConnectionString>
+        </DTS:ConnectionManager>
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+    <DTS:ConnectionManager DTS:refId="Package.ConnectionManagers[DW_Actividad4]" DTS:CreationName="OLEDB" DTS:DTSID="{C2222222-2222-2222-2222-222222222222}" DTS:ObjectName="DW_Actividad4">
+      <DTS:ObjectData>
+        <DTS:ConnectionManager DataSource="ANDRES" InitialCatalog="DW_Actividad4" Provider="MSOLEDBSQL.1" IntegratedSecurity="True">
+          <DTS:ConnectionString>Data Source=ANDRES;Initial Catalog=DW_Actividad4;Provider=MSOLEDBSQL.1;Integrated Security=SSPI;Auto Translate=False;</DTS:ConnectionString>
+        </DTS:ConnectionManager>
+      </DTS:ObjectData>
+    </DTS:ConnectionManager>
+  </DTS:ConnectionManagers>
+
+  <DTS:Variables />
+
+  <!-- Data Flow Task: Carga FactEncuestas (esqueleto con instrucciones para completar en GUI) -->
+  <DTS:Executables>
+    <DTS:Executable DTS:refId="Package\Carga FactEncuestas Auto" DTS:CreationName="Microsoft.Pipeline" DTS:Description="Tarea Flujo de datos auto-generada (completar mapeos en GUI)" DTS:DTSID="{E3333333-3333-3333-3333-333333333333}" DTS:ExecutableType="Microsoft.Pipeline" DTS:LocaleID="0" DTS:ObjectName="Carga FactEncuestas Auto">
+      <DTS:Variables />
+      <DTS:ObjectData>
+        <pipeline version="1">
+          <components>
+
+            <!-- OLE DB Source -->
+            <component refId="Package\Carga FactEncuestas Auto\Origen de OLE DB" componentClassID="Microsoft.OLEDBSource" description="Origen de OLE DB: consulta proporcionada" name="Origen de OLE DB" usesDispositions="true" version="7">
+              <properties>
+                <property dataType="System.Int32" name="CommandTimeout">0</property>
+                <property dataType="System.String" name="SqlCommand"><![CDATA[SELECT s.SurveyId, s.PersonId, CAST(s.SurveyDate AS DATE) AS SurveyDate, s.MunicipalityId, s.EducationLevelId, s.EmploymentStatusId, s.MonthlyIncome, s.MonthlyExpenses FROM dbo.Survey s]]></property>
+                <property dataType="System.Int32" name="AccessMode">0</property>
+              </properties>
+              <connections>
+                <connection refId="Package\Carga FactEncuestas Auto\Origen de OLE DB.Connections[OleDbConnection]" connectionManagerID="Package.ConnectionManagers[ETLActivity.bak]" connectionManagerRefId="Package.ConnectionManagers[ETLActivity.bak]" name="OleDbConnection" description="Conexión origen ETLActivity.bak"/>
+              </connections>
+            </component>
+
+            <!-- Derived Column -->
+            <component refId="Package\Carga FactEncuestas Auto\Derived Column" componentClassID="Microsoft.DerivedColumn" description="Derived Column: crea MonthlyBalance y CantidadObservaciones" name="Derived Column" usesDispositions="true" version="7">
+              <properties>
+                <!-- Expressions to paste in GUI Derived Column component -->
+                <property dataType="System.String" name="DerivedColumns"><![CDATA[-- MonthlyBalance (DT_R8): (ISNULL(MonthlyIncome) || ISNULL(MonthlyExpenses)) ? NULL(DT_R8) : ((DT_R8)MonthlyIncome - (DT_R8)MonthlyExpenses)
+-- CantidadObservaciones (DT_I4): (DT_I4)1]]></property>
+              </properties>
+            </component>
+
+            <!-- Lookups for dimensions (placeholders) -->
+            <component refId="Package\Carga FactEncuestas Auto\Lookup_Persona" componentClassID="Microsoft.Lookup" description="Lookup DimPersona (PersonId -> PersonId)" name="Lookup_DimPersona" usesDispositions="true" version="7">
+              <properties>
+                <property dataType="System.String" name="ConnectionManager">Package.ConnectionManagers[DW_Actividad4]</property>
+                <property dataType="System.String" name="SqlCommand"><![CDATA[SELECT PersonaKey, PersonId FROM dbo.DimPersona]]></property>
+                <property dataType="System.String" name="CacheMode">Full</property>
+              </properties>
+            </component>
+
+            <component refId="Package\Carga FactEncuestas Auto\Lookup_Tiempo" componentClassID="Microsoft.Lookup" description="Lookup DimTiempo (SurveyDate -> Fecha)" name="Lookup_DimTiempo" usesDispositions="true" version="7">
+              <properties>
+                <property dataType="System.String" name="ConnectionManager">Package.ConnectionManagers[DW_Actividad4]</property>
+                <property dataType="System.String" name="SqlCommand"><![CDATA[SELECT TiempoKey, Fecha FROM dbo.DimTiempo]]></property>
+                <property dataType="System.String" name="CacheMode">Full</property>
+              </properties>
+            </component>
+
+            <component refId="Package\Carga FactEncuestas Auto\Lookup_Ubicacion" componentClassID="Microsoft.Lookup" description="Lookup DimUbicacion (MunicipalityId -> MunicipalityId)" name="Lookup_DimUbicacion" usesDispositions="true" version="7">
+              <properties>
+                <property dataType="System.String" name="ConnectionManager">Package.ConnectionManagers[DW_Actividad4]</property>
+                <property dataType="System.String" name="SqlCommand"><![CDATA[SELECT UbicacionKey, MunicipalityId FROM dbo.DimUbicacion]]></property>
+                <property dataType="System.String" name="CacheMode">Full</property>
+              </properties>
+            </component>
+
+            <component refId="Package\Carga FactEncuestas Auto\Lookup_Educacion" componentClassID="Microsoft.Lookup" description="Lookup DimEducacion (EducationLevelId -> EducationLevelId)" name="Lookup_DimEducacion" usesDispositions="true" version="7">
+              <properties>
+                <property dataType="System.String" name="ConnectionManager">Package.ConnectionManagers[DW_Actividad4]</property>
+                <property dataType="System.String" name="SqlCommand"><![CDATA[SELECT EducacionKey, EducationLevelId FROM dbo.DimEducacion]]></property>
+                <property dataType="System.String" name="CacheMode">Full</property>
+              </properties>
+            </component>
+
+            <component refId="Package\Carga FactEncuestas Auto\Lookup_SituacionLaboral" componentClassID="Microsoft.Lookup" description="Lookup DimSituacionLaboral (EmploymentStatusId -> EmploymentStatusId)" name="Lookup_DimSituacionLaboral" usesDispositions="true" version="7">
+              <properties>
+                <property dataType="System.String" name="ConnectionManager">Package.ConnectionManagers[DW_Actividad4]</property>
+                <property dataType="System.String" name="SqlCommand"><![CDATA[SELECT SituacionLaboralKey, EmploymentStatusId FROM dbo.DimSituacionLaboral]]></property>
+                <property dataType="System.String" name="CacheMode">Full</property>
+              </properties>
+            </component>
+
+            <!-- Lookup anti-duplicados: verifica existencia por SurveyId -->
+            <component refId="Package\Carga FactEncuestas Auto\Lookup_Duplicados" componentClassID="Microsoft.Lookup" description="Lookup en FactEncuestas para detectar duplicados por SurveyId" name="Lookup_FactEncuestas_Duplicados" usesDispositions="true" version="7">
+              <properties>
+                <property dataType="System.String" name="ConnectionManager">Package.ConnectionManagers[DW_Actividad4]</property>
+                <property dataType="System.String" name="SqlCommand"><![CDATA[SELECT SurveyId FROM dbo.FactEncuestas]]></property>
+                <property dataType="System.String" name="CacheMode">Full</property>
+                <property dataType="System.String" name="NoMatchBehavior">Redirect</property>
+              </properties>
+            </component>
+
+            <!-- OLE DB Destination -->
+            <component refId="Package\Carga FactEncuestas Auto\Destination FactEncuestas" componentClassID="Microsoft.OleDbDestination" description="Destino OLE DB: FactEncuestas" name="Destino FactEncuestas" usesDispositions="true" version="7">
+              <properties>
+                <property dataType="System.String" name="OpenRowset">dbo.FactEncuestas</property>
+                <property dataType="System.Int32" name="AccessMode">1</property>
+                <property dataType="System.String" name="FastLoadOptions">TABLOCK;CHECK_CONSTRAINTS</property>
+                <property dataType="System.Int32" name="FastLoadKeepIdentity">0</property>
+                <property dataType="System.Int32" name="DefaultCodePage">1252</property>
+              </properties>
+              <connections>
+                <connection refId="Package\Carga FactEncuestas Auto\Destination FactEncuestas.Connections[OledbConnection]" connectionManagerID="Package.ConnectionManagers[DW_Actividad4]" connectionManagerRefId="Package.ConnectionManagers[DW_Actividad4]" name="OleDbConnection" description="Conexión destino DW_Actividad4"/>
+              </connections>
+            </component>
+
+          </components>
+
+          <!-- Notional paths (to be connected in Visual Studio):
+               Origen de OLE DB -> Derived Column -> Lookup_DimPersona -> Lookup_DimTiempo -> Lookup_DimUbicacion -> Lookup_DimEducacion -> Lookup_DimSituacionLaboral -> Lookup_FactEncuestas_Duplicados (No Match) -> Destino FactEncuestas
+
+               Derived Column expressions to paste in GUI:
+               MonthlyBalance (DT_R8): (ISNULL(MonthlyIncome) || ISNULL(MonthlyExpenses)) ? NULL(DT_R8) : ((DT_R8)MonthlyIncome - (DT_R8)MonthlyExpenses)
+               CantidadObservaciones (DT_I4): (DT_I4)1
+
+               Lookup mappings to configure in GUI (Input Column -> Lookup Column):
+               DimPersona: PersonId -> PersonId, return PersonaKey
+               DimTiempo: SurveyDate -> Fecha, return TiempoKey
+               DimUbicacion: MunicipalityId -> MunicipalityId, return UbicacionKey
+               DimEducacion: EducationLevelId -> EducationLevelId, return EducacionKey
+               DimSituacionLaboral: EmploymentStatusId -> EmploymentStatusId, return SituacionLaboralKey
+
+               Lookup anti-duplicados: FactEncuestas SELECT SurveyId; set "Redirect rows to no match output" so that only new rows go to destination.
+
+               Destination mappings to configure in GUI:
+               SurveyId -> SurveyId
+               PersonaKey -> PersonaKey
+               TiempoKey -> TiempoKey
+               UbicacionKey -> UbicacionKey
+               EducacionKey -> EducacionKey
+               SituacionLaboralKey -> SituacionLaboralKey
+               MonthlyIncome -> MonthlyIncome
+               MonthlyExpenses -> MonthlyExpenses
+               MonthlyBalance -> MonthlyBalance
+               CantidadObservaciones -> CantidadObservaciones
+          -->
+
+        </pipeline>
+      </DTS:ObjectData>
+    </DTS:Executable>
+  </DTS:Executables>
+
+</DTS:Executable>
