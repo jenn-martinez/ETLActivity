@@ -39,142 +39,165 @@ DECLARE @Disability AS NVARCHAR(50)
 DECLARE @SurveyDate AS NVARCHAR(50)
 DECLARE @UpdatedAt AS DATETIME2(7)
 DECLARE @SourceChannel AS NVARCHAR(50)
+DECLARE @TotalProcesados INT = 0
+DECLARE @TotalAceptados INT = 0
+DECLARE @TotalRechazados INT = 0
 
 DECLARE CursorPersonas CURSOR FOR 
-	SELECT SourceRowId
-      ,DocumentType,DocumentNumber,FirstName,MiddleName,LastName,SecondLastName
-      ,BirthDate,ReportedAge,Sex,MaritalStatus,Email,Phone,DepartmentCode
-      ,DepartmentName,MunicipalityCode,MunicipalityName
-      ,[Zone],[Address],[HousingType],[SocioeconomicStratum]
-      ,[EducationLevel],[EmploymentStatus],[OccupationCode],[OccupationName]
-      ,[EmployerName],[ContractType],[EmploymentStartDate],[MonthlyIncome]
-      ,[MonthlyExpenses],[Dependents],[HouseholdSize],[HealthRegime]
-      ,[Disability],[SurveyDate],[UpdatedAt],[SourceChannel]
+    SELECT SourceRowId, DocumentType, DocumentNumber, FirstName, MiddleName, LastName, SecondLastName,
+           BirthDate, ReportedAge, Sex, MaritalStatus, Email, Phone, DepartmentCode,
+           DepartmentName, MunicipalityCode, MunicipalityName, [Zone], [Address], [HousingType], [SocioeconomicStratum],
+           [EducationLevel], [EmploymentStatus], [OccupationCode], [OccupationName],
+           [EmployerName], [ContractType], [EmploymentStartDate], [MonthlyIncome],
+           [MonthlyExpenses], [Dependents], [HouseholdSize], [HealthRegime],
+           [Disability], [SurveyDate], [UpdatedAt], [SourceChannel]
     FROM StagingETL
-	WHERE SourceRowId BETWEEN 1 AND 100 
-	OPEN CursorPersonas
-		FETCH NEXT FROM CursorPersonas INTO @SourceRowID,@DocumentType,@DocumentNumber, @FirstName,@MiddleName,
-        @LastName,@SecondLastName,@BirthDate,@ReportedAge,@Sex,@MaritalStatus,@Email,@Phone,@DepartmentCode,
-        @DepartmentName,@MunicipalityCode,@MunicipalityName,@Zone,@Address,@HousingType,@SocioeconomicStratum,
-        @EducationLevel,@EmploymentStatus,@OccupationCode, @OccupationName,@EmployerName,@ContractType,
-        @EmploymentStartDate,@MonthlyIncome,@MonthlyExpense,@Dependents,@HouseholdSize,@HealthRegime,
-        @Disability,@SurveyDate,@UpdatedAt,@SourceChannel
-		WHILE @@FETCH_STATUS = 0
-			BEGIN
-				SET @Reason = ''
-				SET @DocumentType = UPPER(TRIM(@DocumentType))
-				SET @FirstName = TRIM(UPPER(LEFT(@FirstName, 1) + LOWER(SUBSTRING(@FirstName, 2, LEN(@FirstName)))))
-				SET @MiddleName= TRIM(UPPER(LEFT(@MiddleName, 1) + LOWER(SUBSTRING(@MiddleName, 2, LEN(@MiddleName)))))
-				SET @LastName= TRIM(UPPER(LEFT(@LastName, 1) + LOWER(SUBSTRING(@LastName, 2, LEN(@LastName)))))
-				SET @SecondLastName= TRIM(UPPER(LEFT(@SecondLastName, 1) + LOWER(SUBSTRING(@SecondLastName, 2, LEN(@SecondLastName)))))
+    WHERE SourceRowId BETWEEN 1 AND 100
 
-				IF @DocumentNumber IS NULL
-					BEGIN
-						SET @Reason = @Reason + 'Falta el numero de documento; '
-					END
+    OPEN CursorPersonas
 
-				IF @FirstName IS NULL
-					BEGIN
-						SET @Reason = @Reason + 'Falta el primer nombre; '
-					END
+        FETCH NEXT FROM CursorPersonas INTO 
+            @SourceRowID, @DocumentType, @DocumentNumber, @FirstName, @MiddleName,
+            @LastName, @SecondLastName, @BirthDate, @ReportedAge, @Sex, @MaritalStatus, @Email, @Phone, @DepartmentCode,
+            @DepartmentName, @MunicipalityCode, @MunicipalityName, @Zone, @Address, @HousingType, @SocioeconomicStratum,
+            @EducationLevel, @EmploymentStatus, @OccupationCode, @OccupationName, @EmployerName, @ContractType,
+            @EmploymentStartDate, @MonthlyIncome, @MonthlyExpense, @Dependents, @HouseholdSize, @HealthRegime,
+            @Disability, @SurveyDate, @UpdatedAt, @SourceChannel
 
-				IF @LastName IS NULL
-					BEGIN
-						SET @Reason = @Reason + 'Falta el primer apellido; '
-					END
+        WHILE @@FETCH_STATUS = 0
+        BEGIN
+            SET @TotalProcesados = @TotalProcesados + 1
+            SET @Reason = ''
 
-				SET @MonthlyIncome = TRIM(REPLACE(REPLACE(REPLACE(@MonthlyIncome, '$', ''), '.', ''),',','.'))
-				SET @MonthlyExpense = TRIM(REPLACE(REPLACE(REPLACE(@MonthlyExpense, '$', ''), '.', ''),',','.'))
-				SET @Income = TRY_CONVERT(DECIMAL(18,2), @MonthlyIncome)
-				SET @Expense = TRY_CONVERT(DECIMAL(18,2), @MonthlyExpense)
+            SET @DocumentType = UPPER(TRIM(@DocumentType))
+            SET @DocumentNumber = TRIM(@DocumentNumber)
 
-				IF @MonthlyIncome IS NULL
-					BEGIN
-						SET @Reason = @Reason + 'Falta el valor del ingreso mensual; '
-					END
+            IF @FirstName IS NOT NULL AND TRIM(@FirstName) <> ''
+                SET @FirstName = UPPER(LEFT(TRIM(@FirstName), 1)) + LOWER(SUBSTRING(TRIM(@FirstName), 2, LEN(TRIM(@FirstName))))
+            ELSE
+                SET @FirstName = NULL
 
-				IF @Income < 0
-					BEGIN
-						SET @Reason = @Reason + 'EL valor del ingreso mensual es negativo; '
-					END
+            IF @MiddleName IS NOT NULL AND TRIM(@MiddleName) <> ''
+                SET @MiddleName = UPPER(LEFT(TRIM(@MiddleName), 1)) + LOWER(SUBSTRING(TRIM(@MiddleName), 2, LEN(TRIM(@MiddleName))))
+            ELSE
+                SET @MiddleName = NULL
 
-				IF @Income IS NULL
-					BEGIN
-						SET @Reason = @Reason + 'EL valor del ingreso mensual no es numerico; '
-					END
+            IF @LastName IS NOT NULL AND TRIM(@LastName) <> ''
+                SET @LastName = UPPER(LEFT(TRIM(@LastName), 1)) + LOWER(SUBSTRING(TRIM(@LastName), 2, LEN(TRIM(@LastName))))
+            ELSE
+                SET @LastName = NULL
 
-				IF @MonthlyExpense IS NULL
-					BEGIN
-						SET @Reason = @Reason + 'Falta el valor del gasto mensual; '
-					END
+            IF @SecondLastName IS NOT NULL AND TRIM(@SecondLastName) <> ''
+                SET @SecondLastName = UPPER(LEFT(TRIM(@SecondLastName), 1)) + LOWER(SUBSTRING(TRIM(@SecondLastName), 2, LEN(TRIM(@SecondLastName))))
+            ELSE
+                SET @SecondLastName = NULL
 
-				IF @Expense < 0
-					BEGIN
-						SET @Reason = @Reason + 'El valor del gasto mensual es negativo; '
-					END
+            IF @DocumentNumber IS NULL OR UPPER(@DocumentNumber) = 'SIN-DATO' OR TRIM(@DocumentNumber) = ''
+                SET @Reason = @Reason + 'Falta el número de documento o es inválido; '
 
-				IF @Expense IS NULL
-					BEGIN
-						SET @Reason = @Reason + 'El valor del gasto mensual no es numerico; '
-					END
+            IF @FirstName IS NULL
+                SET @Reason = @Reason + 'Falta el primer nombre; '
 
-				IF @Income IS NOT NULL AND @Expense IS NOT NULL
-					BEGIN
-						SET @MonthlyBalance = @Income - @Expense
-					END
-				ELSE
-					BEGIN
-						SET @MonthlyBalance = NULL
-					END
-				
+            IF @LastName IS NULL
+                SET @Reason = @Reason + 'Falta el primer apellido; '
 
-				IF @Reason <> ''
-					BEGIN
-						INSERT INTO RejectedPeople
-                            (SourceRowId,DocumentType,DocumentNumber,FirstName,MiddleName,LastName,SecondLastName
-                              ,BirthDate,ReportedAge,Sex,MaritalStatus,Email,Phone,DepartmentCode
-                              ,DepartmentName,MunicipalityCode,MunicipalityName
-                              ,[Zone],[Address],[HousingType],[SocioeconomicStratum]
-                              ,[EducationLevel],[EmploymentStatus],[OccupationCode],[OccupationName]
-                              ,[EmployerName],[ContractType],[EmploymentStartDate],[MonthlyIncome]
-                              ,[MonthlyExpenses],[Dependents],[HouseholdSize],[HealthRegime]
-                              ,[Disability],[SurveyDate],[UpdatedAt],[SourceChannel],[Reason])
-                        VALUES
-                            (@SourceRowID, @DocumentType, @DocumentNumber, @FirstName, @MiddleName, @LastName, @SecondLastName,
-                             @BirthDate, @ReportedAge, @Sex, @MaritalStatus, @Email, @Phone, @DepartmentCode,
-                             @DepartmentName, @MunicipalityCode, @MunicipalityName, @Zone, @Address, @HousingType,
-                             @SocioeconomicStratum, @EducationLevel, @EmploymentStatus, @OccupationCode,
-                             @OccupationName, @EmployerName, @ContractType, @EmploymentStartDate, @MonthlyIncome,
-                             @MonthlyExpense, @Dependents, @HouseholdSize, @HealthRegime, @Disability,
-                             @SurveyDate, @UpdatedAt, @SourceChannel, @Reason)
-					END
-				ELSE
-					BEGIN
-					INSERT INTO ValidPeople
-                            (SourceRowId,DocumentType,DocumentNumber,FirstName,MiddleName,LastName,SecondLastName
-                              ,BirthDate,ReportedAge,Sex,MaritalStatus,Email,Phone,DepartmentCode
-                              ,DepartmentName,MunicipalityCode,MunicipalityName
-                              ,[Zone],[Address],[HousingType],[SocioeconomicStratum]
-                              ,[EducationLevel],[EmploymentStatus],[OccupationCode],[OccupationName]
-                              ,[EmployerName],[ContractType],[EmploymentStartDate],[MonthlyIncome]
-                              ,[MonthlyExpenses],[Dependents],[HouseholdSize],[HealthRegime]
-                              ,[Disability],[SurveyDate],[UpdatedAt],[SourceChannel],[MonthlyBalance])
-                        VALUES
-                            (@SourceRowID, @DocumentType, @DocumentNumber, @FirstName, @MiddleName, @LastName, @SecondLastName,
-                             @BirthDate, @ReportedAge, @Sex, @MaritalStatus, @Email, @Phone, @DepartmentCode,
-                             @DepartmentName, @MunicipalityCode, @MunicipalityName, @Zone, @Address, @HousingType,
-                             @SocioeconomicStratum, @EducationLevel, @EmploymentStatus, @OccupationCode,
-                             @OccupationName, @EmployerName, @ContractType, @EmploymentStartDate, @MonthlyIncome,
-                             @MonthlyExpense, @Dependents, @HouseholdSize, @HealthRegime, @Disability,
-                             @SurveyDate, @UpdatedAt, @SourceChannel, @MonthlyBalance)
-                    END
+            IF @MonthlyIncome IS NOT NULL AND TRIM(@MonthlyIncome) <> ''
+                BEGIN
+                    DECLARE @CleanIncome NVARCHAR(50)
+                    SET @CleanIncome = REPLACE(REPLACE(REPLACE(TRIM(@MonthlyIncome), '$', ''), ' ', ''), '.', '')
+                    SET @CleanIncome = REPLACE(@CleanIncome, ',', '.')
+        
+                    SET @Income = TRY_CONVERT(DECIMAL(18,2), @CleanIncome)
 
-				FETCH NEXT FROM CursorPersonas INTO @SourceRowID,@DocumentType,@DocumentNumber, @FirstName,@MiddleName,
-                @LastName,@SecondLastName,@BirthDate,@ReportedAge,@Sex,@MaritalStatus,@Email,@Phone,@DepartmentCode,
-                @DepartmentName,@MunicipalityCode,@MunicipalityName,@Zone,@Address,@HousingType,@SocioeconomicStratum,
-                @EducationLevel,@EmploymentStatus,@OccupationCode, @OccupationName,@EmployerName,@ContractType,
-                @EmploymentStartDate,@MonthlyIncome,@MonthlyExpense,@Dependents,@HouseholdSize,@HealthRegime,
-                @Disability,@SurveyDate,@UpdatedAt,@SourceChannel
-			END
-	CLOSE  CursorPersonas
-DEALLOCATE CursorPersonas
+                    IF @Income IS NULL
+                        SET @Reason = @Reason + 'El valor del ingreso mensual no es numérico; '
+                    ELSE IF @Income < 0
+                        SET @Reason = @Reason + 'El valor del ingreso mensual es negativo; '
+                END
+            ELSE
+                BEGIN
+                    SET @Income = NULL
+                    SET @Reason = @Reason + 'Falta el valor del ingreso mensual; '
+                END
+
+            IF @MonthlyExpense IS NOT NULL AND TRIM(@MonthlyExpense) <> ''
+                BEGIN
+                    DECLARE @CleanExpense NVARCHAR(50)
+                    SET @CleanExpense = REPLACE(REPLACE(REPLACE(TRIM(@MonthlyExpense), '$', ''), ' ', ''), '.', '')
+                    SET @CleanExpense = REPLACE(@CleanExpense, ',', '.')
+        
+                    SET @Expense = TRY_CONVERT(DECIMAL(18,2), @CleanExpense)
+
+                    IF @Expense IS NULL
+                        SET @Reason = @Reason + 'El valor del gasto mensual no es numérico; '
+                    ELSE IF @Expense < 0
+                        SET @Reason = @Reason + 'El valor del gasto mensual es negativo; '
+                END
+            ELSE
+                BEGIN
+                    SET @Expense = NULL
+                    SET @Reason = @Reason + 'Falta el valor del gasto mensual; '
+                END
+
+            IF @Income IS NOT NULL AND @Expense IS NOT NULL
+                SET @MonthlyBalance = @Income - @Expense
+            ELSE
+                SET @MonthlyBalance = NULL
+
+            IF @Reason <> ''
+            BEGIN
+                SET @TotalRechazados = @TotalRechazados + 1
+                INSERT INTO RejectedPeople
+                    (SourceRowId, DocumentType, DocumentNumber, FirstName, MiddleName, LastName, SecondLastName,
+                     BirthDate, ReportedAge, Sex, MaritalStatus, Email, Phone, DepartmentCode,
+                     DepartmentName, MunicipalityCode, MunicipalityName, [Zone], [Address], [HousingType], [SocioeconomicStratum],
+                     [EducationLevel], [EmploymentStatus], [OccupationCode], [OccupationName],
+                     [EmployerName], [ContractType], [EmploymentStartDate], [MonthlyIncome],
+                     [MonthlyExpenses], [Dependents], [HouseholdSize], [HealthRegime],
+                     [Disability], [SurveyDate], [UpdatedAt], [SourceChannel], [Reason])
+                VALUES
+                    (@SourceRowID, @DocumentType, @DocumentNumber, @FirstName, @MiddleName, @LastName, @SecondLastName,
+                     @BirthDate, @ReportedAge, @Sex, @MaritalStatus, @Email, @Phone, @DepartmentCode,
+                     @DepartmentName, @MunicipalityCode, @MunicipalityName, @Zone, @Address, @HousingType,
+                     @SocioeconomicStratum, @EducationLevel, @EmploymentStatus, @OccupationCode,
+                     @OccupationName, @EmployerName, @ContractType, @EmploymentStartDate, @MonthlyIncome,
+                     @MonthlyExpense, @Dependents, @HouseholdSize, @HealthRegime, @Disability,
+                     @SurveyDate, @UpdatedAt, @SourceChannel, @Reason)
+            END
+            ELSE
+            BEGIN
+                SET @TotalAceptados = @TotalAceptados + 1
+                INSERT INTO ValidPeople
+                    (SourceRowId, DocumentType, DocumentNumber, FirstName, MiddleName, LastName, SecondLastName,
+                     BirthDate, ReportedAge, Sex, MaritalStatus, Email, Phone, DepartmentCode,
+                     DepartmentName, MunicipalityCode, MunicipalityName, [Zone], [Address], [HousingType], [SocioeconomicStratum],
+                     [EducationLevel], [EmploymentStatus], [OccupationCode], [OccupationName],
+                     [EmployerName], [ContractType], [EmploymentStartDate], [MonthlyIncome],
+                     [MonthlyExpenses], [Dependents], [HouseholdSize], [HealthRegime],
+                     [Disability], [SurveyDate], [UpdatedAt], [SourceChannel], [MonthlyBalance])
+                VALUES
+                    (@SourceRowID, @DocumentType, @DocumentNumber, @FirstName, @MiddleName, @LastName, @SecondLastName,
+                     @BirthDate, @ReportedAge, @Sex, @MaritalStatus, @Email, @Phone, @DepartmentCode,
+                     @DepartmentName, @MunicipalityCode, @MunicipalityName, @Zone, @Address, @HousingType,
+                     @SocioeconomicStratum, @EducationLevel, @EmploymentStatus, @OccupationCode,
+                     @OccupationName, @EmployerName, @ContractType, @EmploymentStartDate, @MonthlyIncome,
+                     @MonthlyExpense, @Dependents, @HouseholdSize, @HealthRegime, @Disability,
+                     @SurveyDate, @UpdatedAt, @SourceChannel, @MonthlyBalance)
+            END
+
+            FETCH NEXT FROM CursorPersonas INTO 
+                @SourceRowID, @DocumentType, @DocumentNumber, @FirstName, @MiddleName,
+                @LastName, @SecondLastName, @BirthDate, @ReportedAge, @Sex, @MaritalStatus, @Email, @Phone, @DepartmentCode,
+                @DepartmentName, @MunicipalityCode, @MunicipalityName, @Zone, @Address, @HousingType, @SocioeconomicStratum,
+                @EducationLevel, @EmploymentStatus, @OccupationCode, @OccupationName, @EmployerName, @ContractType,
+                @EmploymentStartDate, @MonthlyIncome, @MonthlyExpense, @Dependents, @HouseholdSize, @HealthRegime,
+                @Disability, @SurveyDate, @UpdatedAt, @SourceChannel
+        END
+
+    CLOSE CursorPersonas
+    DEALLOCATE CursorPersonas
+
+SELECT 
+    @TotalProcesados AS [Registros Procesados],
+    @TotalAceptados AS [Registros Aceptados],
+    @TotalRechazados AS [Registros Rechazados]
